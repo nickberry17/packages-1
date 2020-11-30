@@ -24,11 +24,12 @@ timetoseconds() {
 }
 
 load_watchcat() {
-	config_get period	$1 period
-	config_get mode		$1 mode		"always"
-	config_get pinghosts	$1 pinghosts	"8.8.8.8"
-	config_get pingperiod	$1 pingperiod
-	config_get forcedelay	$1 forcedelay	"0"
+	config_get period    $1 period
+	config_get mode    $1 mode		"ping"
+	config_get pinghosts    $1 pinghosts	"8.8.8.8"
+	config_get pingperiod    $1 pingperiod
+	config_get forcedelay    $1 forcedelay	"0"
+	config_get pingsize	    $1 pingsize "standard"
 
 	# Fix potential typo in mode (backward compatibility).
 	[ "$mode" = "allways" ] && mode="always"
@@ -39,11 +40,11 @@ load_watchcat() {
 	period="$seconds"
 	[ "$period" -ge 1 ] \
 		|| append_string "error" 'period is not a valid time value (ex: "30"; "4m"; "6h"; "2d")' "; "
-	[ "$mode" = "always" -o "$mode" = "ping" ] \
-		|| append_string "error" "mode must be 'always' or 'ping'" "; "
+	[ "$mode" = "always" -o "$mode" = "ping" -o "$mode" = "network" ] \
+		|| append_string "error" "mode must be 'always' or 'ping' or 'network'" "; "
 	[ -n "$pinghosts" -o "$mode" = "always" ] \
 		|| append_string "error" "pinghosts must be set when in 'ping' mode" "; "
-	[ "$mode" = "ping" ] && {
+	[ "$mode" = "ping" -o "$mode" = "network" ] && {
 		if [ -n "$pingperiod" ]
 		then
 			timetoseconds "$pingperiod"
@@ -64,14 +65,23 @@ load_watchcat() {
 
 	[ -n "$error" ] && { logger -p user.err -t "watchcat" "reboot program $1 not started - $error"; return; }
 
-	if [ "$mode" = "always" ]
-	then
+	case "$mode" in
+	always)
 		/usr/bin/watchcat.sh "always" "$period" "$forcedelay" &
 		logger -p user.info -t "watchcat" "started task (mode=$mode;period=$period;forcedelay=$forcedelay)"
-	else
-		/usr/bin/watchcat.sh "period" "$period" "$forcedelay" "$pinghosts" "$pingperiod" &
+		;;
+	ping)
+		/usr/bin/watchcat.sh "ping" "$period" "$forcedelay" "$pinghosts" "$pingperiod" "$pingsize" &
 		logger -p user.info -t "watchcat" "started task (mode=$mode;period=$period;pinghosts=$pinghosts;pingperiod=$pingperiod;forcedelay=$forcedelay)"
-	fi
+		;;
+	network)
+		/usr/bin/watchcat.sh "network" "$period" "$forcedelay" "$pinghosts" "$pingperiod" "$pingsize" &
+		logger -p user.info -t "watchcat" "started task (mode=$mode;period=$period;pinghosts=$pinghosts;pingperiod=$pingperiod;pingsize="$pingsize")"
+		;;
+	*)
+		echo "Error starting Watchcat service."
+		;;
+	esac
 
 	echo $! >> "${PIDFILE}.pids"
 }
