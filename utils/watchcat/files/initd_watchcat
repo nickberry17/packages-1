@@ -24,14 +24,14 @@ timetoseconds() {
 }
 
 load_watchcat() {
-	config_get period			$1 period
-	config_get mode				$1 mode			"ping_reboot"
-	config_get ping_hosts		$1 ping_hosts	"8.8.8.8"
-	config_get ping_period		$1 ping_period
-	config_get forcedelay		$1 forcedelay	"0"
-	config_get ping_size		$1 ping_size	"standard"
-	config_get interface		$1 interface
-	config_get mm_iface_name	$1 mm_iface_name
+	config_get period           $1 period
+	config_get mode	            $1 mode	        "ping_reboot"
+	config_get ping_hosts       $1 ping_hosts   "8.8.8.8"
+	config_get ping_period      $1 ping_period
+	config_get forcedelay       $1 forcedelay   "0"
+	config_get ping_size        $1 ping_size    "standard"
+	config_get interface        $1 interface
+	config_get mm_iface_name    $1 mm_iface_name
 
 
 	# Fix potential typo in mode and provide backward compatibility.

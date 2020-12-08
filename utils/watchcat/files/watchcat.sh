@@ -164,7 +164,7 @@ watchcat_ping() {
 			if ping -s "$ping_size" -c 1 "$host" &>/dev/null; then
 				time_lastcheck_withinternet="$time_now"
 			else
-				time_diff="$((time_now - time_lastcheck_withinternet))"
+				time_diff="$((time_now-time_lastcheck_withinternet))"
 				logger -p daemon.info -t "watchcat[$$]" "no internet connectivity for "$time_diff" seconds. Rebooting this router when reaching "$period""
 			fi
 		done
