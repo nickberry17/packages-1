@@ -67,13 +67,13 @@ watchcat_restart_modemmanager_iface() {
 	logger -t INFO "Resetting bands and reconnecting modem: $1 now."
 	/usr/bin/mmcli -m any --set-current-bands=any
 	/etc/init.d/modemmanager restart
-	ifup $1
+	ifup "$1"
 }
 
 watchcat_restart_network_iface() {
 	logger -t INFO "Restarting network interface: $1."
-	ifdown $1
-	ifup $1
+	ifdown "$1"
+	ifup "$1"
 }
 
 watchcat_monitor_network() {
@@ -165,11 +165,11 @@ watchcat_ping() {
 				time_lastcheck_withinternet="$time_now"
 			else
 				time_diff="$((time_now-time_lastcheck_withinternet))"
-				logger -p daemon.info -t "watchcat[$$]" "no internet connectivity for "$time_diff" seconds. Rebooting this router when reaching "$period""
+				logger -p daemon.info -t "watchcat[$$]" "no internet connectivity for $time_diff seconds. Rebooting this router when reaching $period"
 			fi
 		done
 
-		time_diff="$((time_now - time_lastcheck_withinternet))"
+		time_diff="$((time_now-time_lastcheck_withinternet))"
 		[ "$time_diff" -ge "$period" ] && shutdown_now "$force_delay"
 
 	done
