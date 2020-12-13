@@ -30,19 +30,24 @@ load_watchcat() {
 	config_get period $1 period
 	config_get mode $1 mode
 	config_get pinghosts $1 pinghosts
-	config_get ping_period $1 ping_period
-	config_get no_ping_time $1 no_ping_time
-	config_get force_delay $1 force_delay
-	config_get ping_size $1 ping_size "standard"
+	config_get pingperiod $1 pingperiod
+	config_get nopingtime $1 nopingtime
+	config_get forcedelay $1 forcedelay
+	config_get pingsize $1 pingsize
+	config_get interface $1 interface
+	config_get mmifacename $1 mmifacename
+	config_get mmifaceunlockbands $1 mmifaceunlockbands
 
-	local nopingtime_dflt="900"
-	local force_delay_default="60"
+	local nopingtime_default="21600"
+	local forcedelay_default="60"
+	local pingsize_default="standard"
+	local mmifaceunlockbands_default="0"
 
-	# Fix potential typo in mode (backward compatibility).
+	# Fix potential typo in mode and provide backward compatibility.
 	[ "$mode" = "allways" ] && mode="periodic_reboot"
 	[ "$mode" = "always" ] && mode="periodic_reboot"
 	[ "$mode" = "ping" ] && mode="ping_reboot"
-	
+
 	error=""
 	warn=""
 
@@ -55,52 +60,69 @@ load_watchcat() {
 			append_string "error" "period has invalid format! Use time value(ex: '30'; '4m'; '6h'; '2d')" "; "
 	fi
 
-	[ "$mode" = "periodic_reboot" -o "$mode" = "ping_reboot" ] ||
-		append_string "error" "mode must be 'periodic_reboot' or 'ping_reboot'" "; "
+	[ "$mode" = "periodic_reboot" -o "$mode" = "ping_reboot" -o "$mode" = "restart_iface" ] ||
+		append_string "error" "mode must be 'periodic_reboot' or 'ping_reboot' or 'restart_iface'" "; "
 
-	if [ -z "$force_delay" ]; then
-		force_delay="$force_delay_default"
-		append_string "warn" "force_delay is not configured! Defaulted to $force_delay seconds" "; "
+	[ -n "$pinghosts" ] ||
+		append_string "error" "pinghosts must be set when in 'ping_reboot' or 'restart_iface' mode" "; "
+
+	if [ -z "$forcedelay" ]; then
+		forcedelay="$forcedelay_default"
+		append_string "warn" "forcedelay is not configured! Defaulted to $forcedelay_default seconds" "; "
 	else
-		[ "$force_delay" -ge 0 ] || {
-			force_delay="$force_delay_default"
-			append_string "warn" "force_delay is invalid! Defaulted to $force_delay seconds" "; "
+		[ "$forcedelay" -ge 0 ] || {
+			forcedelay="$forcedelay_default"
+			append_string "warn" "forcedelay is invalid! Defaulted to $forcedelay_default seconds" "; "
 		}
 	fi
 
-	[ -z "$error" -a "$mode" = "ping_reboot" ] && {
+	if [ -z "$pingsize" ]; then
+		pingsize="$pingsize_default"
+		append_string "warn" "pingsize is not configured! Defaulted to $pingsize_default ping packet size" "; "
+	fi
+
+	if [ -z "$mmifaceunlockbands" ]; then
+		mmifaceunlockbands="$mmifaceunlockbands_default"
+		append_string "warn" "mmifaceunlockbands is not configured! Defaulted to $mmifaceunlockbands_default " "; "
+	fi
+
+	[ -z "$error" -a "$mode" = "ping_reboot" -o "$mode" = "restart_iface" ] && {
 		[ -z "$pinghosts" ] &&
 			append_string "error" "pinghosts must be set in 'ping_reboot' mode! Use space separated address list (ex: '8.8.8.8 9.9.9.9')" "; "
 
-		if [ -z "$no_ping_time" ]; then
-			no_ping_time="$nopingtime_dflt"
-			append_string "warn" "no_ping_time is not configured! Defaulted to $no_ping_time seconds" "; "
+		if [ -z "$nopingtime" ]; then
+			nopingtime="$nopingtime_default"
+			append_string "warn" "nopingtime is not configured! Defaulted to $nopingtime_default seconds" "; "
 		else
-			time_to_seconds "$no_ping_time"
-			no_ping_time="$seconds"
-			[ "$no_ping_time" -ge 0 ] || {
-				no_ping_time="$nopingtime_dflt"
-				append_string "warn" "no_ping_time invalid format! Use time value(ex: '30'; '4m'; '6h'; '2d'). Defaulted to $no_ping_time seconds" "; "
+			time_to_seconds "$nopingtime"
+			nopingtime="$seconds"
+			[ "$nopingtime" -ge 0 ] || {
+				nopingtime="$nopingtime"
+				append_string "warn" "nopingtime invalid format! Use time value(ex: '30'; '4m'; '6h'; '2d'). Defaulted to $nopingtime_default seconds" "; "
 			}
 		fi
 
-		local ping_period_default="$((period / 5))"
+		local pingperiod_default="$((period / 5))"
 
-		if [ -z "$ping_period" ]; then
-			ping_period="$ping_period_default"
-			append_string "warn" "ping_period is not configured! Defaulted to $ping_period seconds(1/5 of period)" "; "
+		if [ -z "$pingperiod" ]; then
+			pingperiod="$pingperiod_default"
+			append_string "warn" "pingperiod is not configured! Defaulted to $pingperiod_default seconds(1/5 of period)" "; "
 		else
-			time_to_seconds "$ping_period"
-			ping_period="$seconds"
-			[ "$ping_period" -ge 0 -a "$ping_period" -ge "$period" ] && {
-				ping_period="$ping_period_default"
-				append_string "warn" "ping_period is invalid value(greater than period)! Defaulted to $ping_period seconds(1/5 of period)" "; "
+			time_to_seconds "$pingperiod"
+			pingperiod="$seconds"
+			[ "$pingperiod" -ge 0 -a "$pingperiod" -ge "$period" ] && {
+				pingperiod="$pingperiod_default"
+				append_string "warn" "pingperiod is invalid value(greater than period)! Defaulted to $pingperiod_default seconds(1/5 of period)" "; "
 			}
-			[ "$ping_period" -ge 0 ] || {
-				ping_period="$ping_period_default"
-				append_string "warn" "ping_period has invalid format! Use time value(ex: '30'; '4m'; '6h'; '2d'). Defaulted to $ping_period seconds(1/5 of period)" "; "
+			[ "$pingperiod" -ge 0 ] || {
+				pingperiod="$pingperiod_default"
+				append_string "warn" "pingperiod has invalid format! Use time value(ex: '30'; '4m'; '6h'; '2d'). Defaulted to $pingperiod_default seconds(1/5 of period)" "; "
 			}
 		fi
+
+		[ -z "$mmifacename" -a "$period" -lt 30 ] && {
+			append_string "error" "Check interval is less than 30s. For robust operation with ModemManager modem interfaces it is recommended to set the period to at least 30s."
+		}
 	}
 
 	[ -n "$warn" ] && logger -p user.warn -t "watchcat" "$1: $warn"
@@ -111,18 +133,22 @@ load_watchcat() {
 
 	case "$mode" in
 	periodic_reboot)
-		/usr/bin/watchcat.sh "periodic_reboot" "$period" "$force_delay" &
-		logger -p user.info -t "watchcat" "started task (mode=$mode;period=$period;force_delay=$force_delay)"
+		/usr/bin/watchcat.sh "periodic_reboot" "$period" "$forcedelay" &
+		logger -p user.info -t "watchcat" "started task (mode=$mode;period=$period;forcedelay=$forcedelay)"
 		;;
 	ping_reboot)
-		/usr/bin/watchcat.sh "ping_reboot" "$period" "$force_delay" "$ping_hosts" "$ping_period" "$no_ping_time" "$ping_size" &
-		logger -p user.info -t "watchcat" "started task (mode=$mode;period=$period;ping_hosts=$ping_hosts;ping_period=$ping_period;force_delay=$force_delay;no_ping_time=$no_ping_time;ping_size=$ping_size)"
+		/usr/bin/watchcat.sh "ping_reboot" "$period" "$forcedelay" "$pinghosts" "$pingperiod" "$nopingtime" "$pingsize" &
+		logger -p user.info -t "watchcat" "started task (mode=$mode;period=$period;pinghosts=$pinghosts;pingperiod=$pingperiod;forcedelay=$forcedelay;nopingtime=$nopingtime;pingsize=$pingsize)"
+		;;
+	restart_iface)
+		/usr/bin/watchcat.sh "restart_iface" "$period" "$forcedelay" "$pinghosts" "$pingperiod" "$nopingtime" "$pingsize" "$interface" "$mmifacename" &
+		logger -p user.info -t "watchcat" "started task (mode=$mode;period=$period;pinghosts=$pinghosts;pingperiod=$pingperiod;nopingtime="$nopingtime";pingsize="$pingsize";interface="$interface";mmifacename="$mmifacename";mmifaceunlockbands=$mmifaceunlockbands)"
 		;;
 	*)
 		echo "Error starting Watchcat service. Invalid mode selection: $mode"
 		;;
 	esac
-	
+
 	echo $! >>"${PIDFILE}.pids"
 }
 
