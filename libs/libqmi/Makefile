@@ -8,12 +8,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=libqmi
-PKG_VERSION:=1.28.2
+PKG_VERSION:=1.28.4
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
 PKG_SOURCE_URL:=https://www.freedesktop.org/software/libqmi
-PKG_HASH:=8c8c3ee719874d2529bce9b35b028fe435b36f003979a360d3ad0938449db783
+PKG_HASH:=3b14cd2ab5221a7adbb39fed16ef697538ea1c79308821ad2d19b505e1daaea0
 
 PKG_MAINTAINER:=Nicholas Smith <nicholas.smith@telcoantennas.com.au>
 
